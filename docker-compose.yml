@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  accounts:
+    image: mnolasco/bank-accounts:latest
+    mem_limit: 700m
+    ports:
+      - "8080:8080"
+    networks:
+      - mnolasco-network
+      
+  loans:
+    image: mnolasco/bank-loans:latest
+    mem_limit: 700m
+    ports:
+      - "8090:8090"
+    networks:
+      - mnolasco-network
+      
+  cards:
+    image: mnolasco/bank-cards:latest
+    mem_limit: 700m
+    ports:
+      - "9000:9000"
+    networks:
+      - mnolasco-network
+
+networks:
+  mnolasco-network:
+    

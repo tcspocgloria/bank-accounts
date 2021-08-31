@@ -1,0 +1,29 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: bank-cluster-eks
+  region: us-east-1
+  version: "1.21"
+
+vpc:
+  id: vpc-0f493937efa5e17cc
+  subnets:
+    public:
+      us-east-1a:
+          id: subnet-01aee47c6a837e9eb
+      us-east-1b:
+          id: subnet-03dd265260c1ecfd1
+  sharedNodeSecurityGroup: sg-0b0d35c42389d0fdd
+  
+managedNodeGroups:
+  - name: node-group-workers
+    instanceType: t3.small
+    minSize: 2
+    desiredCapacity: 2
+    volumeSize: 10
+    subnets:
+      - subnet-01aee47c6a837e9eb
+      - subnet-03dd265260c1ecfd1
+    iam:
+        instanceRoleARN: arn:aws:iam::383371216556:role/EKS2-Worker-Node-Role

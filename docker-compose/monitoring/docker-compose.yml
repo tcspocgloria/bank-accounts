@@ -1,0 +1,178 @@
+version: "3.8"
+
+services:
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USERNAME=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+    networks:
+      - mnolasco-network
+    depends_on:
+      - prometheus
+    
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - mnolasco-network
+    
+  zipkin:
+    image: openzipkin/zipkin
+    mem_limit: 700m
+    ports:
+      - "9411:9411"
+    networks:
+      - mnolasco-network
+      
+  configserver:
+    image: mnolasco/bank-configserver:latest
+    mem_limit: 700m
+    ports:
+      - "8071:8071"
+    networks:
+      - mnolasco-network
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411
+  
+  eurekaserver:
+    image: mnolasco/bank-eurekaserver:latest
+    mem_limit: 700m
+    ports:
+      - "8070:8070"
+    networks:
+      - mnolasco-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 4
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8071
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411
+   
+  accounts:
+    image: mnolasco/bank-accounts:latest
+    mem_limit: 700m
+    ports:
+      - "8080:8080"
+    networks:
+      - mnolasco-network
+    depends_on:
+      - configserver
+      - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 20s
+        max_attempts: 4
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8071
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411
+      
+#  accounts-2:
+#    image: mnolasco/bank-accounts:latest
+#    mem_limit: 700m
+#    ports:
+#      - "8082:8080"
+#    networks:
+#      - mnolasco-network
+#    depends_on:
+#      - configserver
+#      - eurekaserver
+#    deploy:
+#      restart_policy:
+#        condition: on-failure
+#        delay: 30s
+#        max_attempts: 3
+#        window: 120s
+#    environment:
+#      SPRING_PROFILES_ACTIVE: default
+#      SPRING_CONFIG_IMPORT: configserver:http://configserver:8071
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      
+  loans:
+    image: mnolasco/bank-loans:latest
+    mem_limit: 700m
+    ports:
+      - "8090:8090"
+    networks:
+      - mnolasco-network
+    depends_on:
+      - configserver
+      - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 20s
+        max_attempts: 4
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8071
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411
+      
+  cards:
+    image: mnolasco/bank-cards:latest
+    mem_limit: 700m
+    ports:
+      - "9000:9000"
+    networks:
+      - mnolasco-network
+    depends_on:
+      - configserver
+      - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 20s
+        max_attempts: 4
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8071
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411
+      
+  gatewayserver:
+    image: mnolasco/bank-gatewayserver:latest
+    mem_limit: 700m
+    ports:
+      - "8072:8072"
+    networks:
+      - mnolasco-network
+    depends_on:
+      - configserver
+      - eurekaserver
+      - cards
+      - loans
+      - accounts
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 40s
+        max_attempts: 4
+        window: 180s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8071
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411
+      
+      
+networks:
+  mnolasco-network:
